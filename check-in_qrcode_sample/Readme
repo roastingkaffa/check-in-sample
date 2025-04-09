@@ -1,0 +1,21 @@
+
+============================================
+/line-check-in-full
+  ├── App.jsx         （打卡主系統）
+  ├── QRCamera.jsx    （掃描相機）
+  ├── main.jsx        （掛載 React）
+  ├── index.html      （網頁入口）
+  ├── package.json
+  ├── package-lock.json
+  ├── node_modules/
+============================================
+
+
+===========================================
+Turn-on Camera for QR code scan function
+install tools :
+1. npm install sonner --legacy-peer-deps
+2. npm install lucide-react --legacy-peer-deps
+3. npm install react-qr-reader --legacy-peer-deps
+
+===========================================

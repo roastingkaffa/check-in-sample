@@ -1,0 +1,20 @@
+{
+  "name": "line-check-in",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-qr-reader": "^3.0.0-beta.1",
+    "sonner": "^2.0.3",
+    "lucide-react": "^0.268.0"
+  },
+  "devDependencies": {
+    "vite": "^4.0.0"
+  }
+}
