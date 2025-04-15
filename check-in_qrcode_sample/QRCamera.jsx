@@ -58,7 +58,7 @@ const QRCamera = ({ onScan }) => {
   }
 
   return (
-    <div className="relative mb-6 border-2 border border-gray-300 rounded-lg h-64 w-full overflow-hidden">
+    <div className="relative w-24 h-24 border border-gray-300 rounded-lg mx-auto overflow-hidden">
       <QrReader
         onResult={handleScan}
         constraints={{ 
@@ -67,14 +67,15 @@ const QRCamera = ({ onScan }) => {
         }}
         scanDelay={500}
         className="w-full h-full"
-        videoStyle={{ objectFit: 'cover' }}
-      />
+        containerStyle={{ width: '100%', height: '100%' }}
+        videoStyle={{ width: '100%', height: '100%', objectFit: 'cover' }}
+       />
       {cameraError && (
         <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
           <p className="text-white text-center p-4">{cameraError}</p>
         </div>
       )}
-      <div className="absolute inset-0 pointer-events-none border-4 border-primary/50 rounded-lg" />
+      <div className="absolute inset-0 pointer-events-none border-4 border-red-900 rounded-lg" />
     </div>
   );
 };
