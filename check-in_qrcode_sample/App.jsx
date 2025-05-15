@@ -15,7 +15,10 @@ const App = () => {
   const [scanning, setScanning] = useState(false);
   const [countdown, setCountdown] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [showFail, setShowFail] = useState(false); // Show Failed status
+  const [showFail, setShowFail] = useState(false);
+  const [hasScanned, setHasScanned] = useState(false);
+  const [scanSession, setScanSession] = useState(0);
+  const [scanReady, setScanReady] = useState(false);
 
   useEffect(() => {
     getLocation();
@@ -38,6 +41,7 @@ const App = () => {
       setPage("dashboard");
       setCountdown(null);
       setShowSuccess(false);
+      setHasScanned(false);
     }
   }, [countdown]);
 
@@ -75,21 +79,27 @@ const App = () => {
   };
 
   const startScan = (selectedMode) => {
+    setHasScanned(false);
     setMode(selectedMode);
+    setScanReady(false);
     setScanning(true);
+    setTimeout(() => setScanReady(true), 1000);
   };
 
   const handleScan = (data) => {
+    if (hasScanned || !data) return;
+    setHasScanned(true);
     try {
       const qrData = JSON.parse(data);
-      verifyLocation(qrData);
+      verifyLocation(qrData, mode);
     } catch {
       toast.error("掃到無效的 QR Code");
       setScanning(false);
+      setHasScanned(false);
     }
   };
 
-  const verifyLocation = (qrData) => {
+  const verifyLocation = (qrData, modeArg) => {
     if (!gps) {
       toast.error("尚未取得目前 GPS 位置");
       return;
@@ -98,7 +108,7 @@ const App = () => {
     const now = new Date();
     if (distance <= 2000) {
       const newRecord = {
-        type: mode === "in" ? "Clock In" : "Clock Out",
+        type: modeArg === "in" ? "Clock In" : "Clock Out",
         date: now.toISOString().split("T")[0],
         time: now.toLocaleTimeString(),
         location: `${gps.lat.toFixed(4)}, ${gps.lng.toFixed(4)}`,
@@ -106,13 +116,23 @@ const App = () => {
       setRecords((prev) => [...prev, newRecord]);
       toast.success("打卡完成，5秒後返回首頁");
       setShowSuccess(true);
-      setCountdown(5);
+     // setCountdown(5);
+      setTimeout(() =>{
+	      setShowSuccess(false);
+	      setScanning(false);
+	      setPage("dashboard");
+	      setHasScanned(false);
+	      setMode("");
+	      window.location.reload();
+      }, 5000);
     } else {
       toast.error("你不在正確位置打卡");
-      setShowFail(true);                    // show read x status
+      setShowFail(true);
       setTimeout(() => {
-        setShowFail(false);                // Auto clear
-        setScanning(false);                // Return Previous pace
+        setShowFail(false);
+        setScanning(false);
+        setHasScanned(false);
+	setMode("");
       }, 2000);
     }
     setMode("");
@@ -176,10 +196,8 @@ const App = () => {
     return (
       <div className="min-h-screen bg-blue-50 flex flex-col items-center justify-center p-4">
         <h2 className="text-2xl font-bold mb-4">掃描 GPS QR Code</h2>
-        <QRCamera onScan={handleScan} />
-        <button onClick={simulateScan} className="mt-4 bg-gray-300 text-black py-2 px-4 rounded">
-          模擬 GPS QR Scan
-        </button>
+        <QRCamera key={scanSession} onScan={handleScan} />
+        <button onClick={simulateScan} className="mt-4 bg-gray-300 text-black py-2 px-4 rounded">模擬 GPS QR Scan</button>
 
         {showSuccess && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-green-100 bg-opacity-80">
