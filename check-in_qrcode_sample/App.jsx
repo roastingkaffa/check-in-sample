@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import QRCamera from "./QRCamera";
 import { toast } from "sonner";
@@ -11,14 +10,13 @@ const App = () => {
   const [gps, setGps] = useState(null);
   const [records, setRecords] = useState([]);
   const [leaveForm, setLeaveForm] = useState({ date: "", duration: "Full Day", reason: "" });
-  const [mode, setMode] = useState("");
   const [scanning, setScanning] = useState(false);
   const [countdown, setCountdown] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showFail, setShowFail] = useState(false);
-  const [hasScanned, setHasScanned] = useState(false);
-  const [scanSession, setScanSession] = useState(0);
-  const [scanReady, setScanReady] = useState(false);
+  const scanSession = useRef(0);
+  const hasScanned = useRef(false);
+  const modeRef = useRef("");
 
   useEffect(() => {
     getLocation();
@@ -31,19 +29,6 @@ const App = () => {
   useEffect(() => {
     localStorage.setItem("records", JSON.stringify(records));
   }, [records]);
-
-  useEffect(() => {
-    if (countdown !== null && countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (countdown === 0) {
-      setScanning(false);
-      setPage("dashboard");
-      setCountdown(null);
-      setShowSuccess(false);
-      setHasScanned(false);
-    }
-  }, [countdown]);
 
   const getLocation = () => {
     if (navigator.geolocation) {
@@ -79,27 +64,26 @@ const App = () => {
   };
 
   const startScan = (selectedMode) => {
-    setHasScanned(false);
-    setMode(selectedMode);
-    setScanReady(false);
+    hasScanned.current = false;
+    modeRef.current = selectedMode;
+    scanSession.current += 1;
     setScanning(true);
-    setTimeout(() => setScanReady(true), 1000);
   };
 
   const handleScan = (data) => {
-    if (hasScanned || !data) return;
-    setHasScanned(true);
+    if (hasScanned.current || !data) return;
+    hasScanned.current = true;
     try {
       const qrData = JSON.parse(data);
-      verifyLocation(qrData, mode);
+      verifyLocation(qrData);
     } catch {
       toast.error("掃到無效的 QR Code");
       setScanning(false);
-      setHasScanned(false);
+      hasScanned.current = false;
     }
   };
 
-  const verifyLocation = (qrData, modeArg) => {
+  const verifyLocation = (qrData) => {
     if (!gps) {
       toast.error("尚未取得目前 GPS 位置");
       return;
@@ -108,7 +92,7 @@ const App = () => {
     const now = new Date();
     if (distance <= 2000) {
       const newRecord = {
-        type: modeArg === "in" ? "Clock In" : "Clock Out",
+        type: modeRef.current === "in" ? "Clock In" : "Clock Out",
         date: now.toISOString().split("T")[0],
         time: now.toLocaleTimeString(),
         location: `${gps.lat.toFixed(4)}, ${gps.lng.toFixed(4)}`,
@@ -116,14 +100,11 @@ const App = () => {
       setRecords((prev) => [...prev, newRecord]);
       toast.success("打卡完成，5秒後返回首頁");
       setShowSuccess(true);
-     // setCountdown(5);
-      setTimeout(() =>{
-	      setShowSuccess(false);
-	      setScanning(false);
-	      setPage("dashboard");
-	      setHasScanned(false);
-	      setMode("");
-	      window.location.reload();
+      setTimeout(() => {
+        setShowSuccess(false);
+        setScanning(false);
+        setPage("dashboard");
+        hasScanned.current = false;
       }, 5000);
     } else {
       toast.error("你不在正確位置打卡");
@@ -131,11 +112,9 @@ const App = () => {
       setTimeout(() => {
         setShowFail(false);
         setScanning(false);
-        setHasScanned(false);
-	setMode("");
+        hasScanned.current = false;
       }, 2000);
     }
-    setMode("");
   };
 
   const simulateScan = () => {
@@ -158,13 +137,8 @@ const App = () => {
       toast.error("請填寫完整請假資料");
       return;
     }
-    const newLeave = {
-      type: "Leave",
-      date: leaveForm.date,
-      duration: leaveForm.duration,
-      reason: leaveForm.reason,
-    };
-    setRecords(prev => [...prev, newLeave]);
+    const newLeave = { ...leaveForm, type: "Leave" };
+    setRecords((prev) => [...prev, newLeave]);
     setLeaveForm({ date: "", duration: "Full Day", reason: "" });
     toast.success("請假申請成功！");
     setPage("dashboard");
@@ -196,27 +170,22 @@ const App = () => {
     return (
       <div className="min-h-screen bg-blue-50 flex flex-col items-center justify-center p-4">
         <h2 className="text-2xl font-bold mb-4">掃描 GPS QR Code</h2>
-        <QRCamera key={scanSession} onScan={handleScan} />
+        <QRCamera key={scanSession.current} onScan={handleScan} />
         <button onClick={simulateScan} className="mt-4 bg-gray-300 text-black py-2 px-4 rounded">模擬 GPS QR Scan</button>
-
         {showSuccess && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-green-100 bg-opacity-80">
             <div className="text-green-600 text-6xl mb-4 animate-bounce">✔️</div>
             <div className="text-green-700 text-xl font-bold">打卡成功！</div>
           </div>
         )}
-
         {showFail && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-100 bg-opacity-80">
             <div className="text-red-600 text-6xl mb-4 animate-bounce">❌</div>
             <div className="text-red-700 text-xl font-bold">打卡失敗！</div>
           </div>
         )}
-
         {countdown !== null && (
-          <div className="text-red-500 mt-4 text-lg font-semibold">
-            將在 {countdown} 秒後返回首頁...
-          </div>
+          <div className="text-red-500 mt-4 text-lg font-semibold">將在 {countdown} 秒後返回首頁...</div>
         )}
       </div>
     );
@@ -268,16 +237,13 @@ const App = () => {
         <h1 className="text-2xl font-bold text-blue-700">Geo Clock-In Buddy</h1>
         <button onClick={handleLogout} className="text-blue-600">Logout</button>
       </div>
-
       <div className="bg-white rounded-2xl shadow p-6 mb-6">
         <h2 className="text-xl font-semibold text-gray-700 mb-2">Attendance System</h2>
         <p className="text-gray-500 mb-4">{new Date().toLocaleDateString("en-US", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-
         <div className="flex space-x-4 mb-6">
           <button onClick={() => startScan("in")} className="bg-green-500 text-white px-4 py-2 rounded">Clock In</button>
           <button onClick={() => startScan("out")} className="bg-red-500 text-white px-4 py-2 rounded">Clock Out</button>
         </div>
-
         <div className="flex space-x-4">
           <button onClick={() => setPage("apply-leave")} className="flex-1 bg-gray-200 py-2 rounded">Apply Leave</button>
           <button onClick={() => setPage("view-records")} className="flex-1 bg-gray-200 py-2 rounded">View Records</button>
